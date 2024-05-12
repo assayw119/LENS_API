@@ -131,3 +131,7 @@ class OrderDetailCreate(OrderDetailBase):
 class OrderDetail(OrderDetailBase):
     class Config:
         orm_mode = True
+
+# 사용자가 입력할 텍스트를 받기 위한 모델 정의
+class TextInput(BaseModel):
+    text: str

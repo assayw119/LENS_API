@@ -4,7 +4,6 @@ from sqlalchemy.orm import relationship
 # database.py에서 생성한 Base import
 from .database import Base
 
-
 # Base를 상속 받아 SQLAlchemy model 생성
 class ProductLine(Base):
     __tablename__ = "productlines"
