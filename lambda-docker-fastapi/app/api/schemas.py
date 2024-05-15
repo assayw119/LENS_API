@@ -12,7 +12,7 @@ class ProductLineCreate(ProductLineBase):
 
 class ProductLine(ProductLineBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ProductBase(BaseModel):
     productCode: str
@@ -30,7 +30,7 @@ class ProductCreate(ProductBase):
 
 class Product(ProductBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class OfficeBase(BaseModel):
     officeCode: str
@@ -48,7 +48,7 @@ class OfficeCreate(OfficeBase):
 
 class Office(OfficeBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class EmployeeBase(BaseModel):
     employeeNumber: int
@@ -65,7 +65,7 @@ class EmployeeCreate(EmployeeBase):
 
 class Employee(EmployeeBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CustomerBase(BaseModel):
     customerNumber: int
@@ -87,7 +87,7 @@ class CustomerCreate(CustomerBase):
 
 class Customer(CustomerBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class PaymentBase(BaseModel):
     customerNumber: int
@@ -100,7 +100,7 @@ class PaymentCreate(PaymentBase):
 
 class Payment(PaymentBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class OrderBase(BaseModel):
     orderNumber: int
@@ -116,7 +116,7 @@ class OrderCreate(OrderBase):
 
 class Order(OrderBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class OrderDetailBase(BaseModel):
     orderNumber: int
@@ -130,7 +130,7 @@ class OrderDetailCreate(OrderDetailBase):
 
 class OrderDetail(OrderDetailBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # 사용자가 입력할 텍스트를 받기 위한 모델 정의
 class TextInput(BaseModel):

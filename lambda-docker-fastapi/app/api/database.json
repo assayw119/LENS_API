@@ -1,0 +1,9 @@
+{
+    "DB": {
+        "user": "root",
+        "password": "fc715ebb-6093-4abe-8dfc-b96fd1bfb39f",
+        "host": "15.165.140.208",
+        "port": "38082",
+        "database": "lens_test"
+    }
+}

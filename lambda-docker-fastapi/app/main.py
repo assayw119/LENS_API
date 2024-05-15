@@ -21,9 +21,11 @@ api_router = APIRouter(prefix="/api")
 # DeferredReflection을 통해 스키마를 나중에 반영
 DeferredReflection.prepare(engine)
 
+
+# 기본 경로에 대한 루트 엔드포인트
 @app.get("/")
-def read_root():
-    return {"Hello": "World~~~"}
+def root():
+    return {"message": "Hello Fastapi"}
 
 
 @app.get("/items/{item_id}")
@@ -163,10 +165,6 @@ async def execute_query(input_text: schemas.TextInput):
         # 데이터베이스 세션 닫기
         db.close()
 
-# 기본 경로에 대한 루트 엔드포인트
-@app.get("/")
-async def root():
-    return {"message": "Welcome to the SQLAlchemy SQLite Query Execution API"}
 
 # # 데이터베이스에서 데이터 추출
 # @app.get("/data/")
