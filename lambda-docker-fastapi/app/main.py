@@ -8,12 +8,28 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.declarative import DeferredReflection
 
+from fastapi.middleware.cors import CORSMiddleware # CORS
+
 
 app = FastAPI(
     title="FastAPI Serverless",
     description="FastAPI를 활용한 서버리스",
     version="0.1.0",
     root_path="/v1",
+)
+
+# CORS 정책 설정
+origins = [
+    "http://localhost:3000",
+    "https://lens-one.vercel.app/"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
 )
 
 api_router = APIRouter(prefix="/api")
