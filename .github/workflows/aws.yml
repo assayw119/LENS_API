@@ -69,6 +69,7 @@ jobs:
       run: |
         echo "ECR_REGISTRY: $ECR_REGISTRY"
         echo "IMAGE_TAG: $IMAGE_TAG"
+        echo "login-ecr.outputs : $login-ecr.outputs"
 
 
     - name: Build, tag, and push image to Amazon ECR
