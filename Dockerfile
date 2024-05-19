@@ -1,5 +1,5 @@
 # Python 람다 함수를 위한 Dockerfile(Linux/ARM64)
-FROM arm64v8/python:3.12
+FROM python:3.12
 
 # Poetry 설치
 RUN pip install -U poetry
