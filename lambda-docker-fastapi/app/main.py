@@ -21,9 +21,10 @@ app = FastAPI(
 # CORS 정책 설정
 origins = [
     "http://localhost:3000",
-    # "https://lens-one.vercel.app/"
-    "http://lens-server-load-balancer-486960209.ap-northeast-2.elb.amazonaws.com",  # 로드밸런서 주소
-
+    "https://lens-one.vercel.app",
+    "https://www.lensql.chat",
+    "https://api.lensql.chat",
+    "http://lens-server-load-balancer-486960209.ap-northeast-2.elb.amazonaws.com",
 ]
 
 app.add_middleware(
@@ -34,6 +35,7 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
+
 api_router = APIRouter(prefix="/api")
 
 # DeferredReflection을 통해 스키마를 나중에 반영
@@ -43,7 +45,7 @@ DeferredReflection.prepare(engine)
 # 기본 경로에 대한 루트 엔드포인트
 @app.get("/")
 def root():
-    return {"message": "Hello Fastapi"}
+    return {"message": "Hello Fastapi v3"}
 
 
 @app.get("/items/{item_id}")
