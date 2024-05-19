@@ -1,20 +1,20 @@
 [tool.poetry]
-name = "lens_api"
+name = "lens-api"
 version = "0.1.0"
 description = ""
 authors = ["YoungWoongPark <assayw119@naver.com>"]
+readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "3.9.6"
+python = "3.12.3"
 fastapi = "^0.111.0"
 mangum = "^0.17.0"
-sqlalchemy = "^2.0.30"
+SQLAlchemy = "^2.0.30"
 pymysql = "^1.1.0"
 pydantic = "^2.7.1"
 pydantic-core = "^2.18.2"
-
-[tool.poetry.group.dev.dependencies]
 uvicorn = "^0.29.0"
+
 
 [build-system]
 requires = ["poetry-core"]
