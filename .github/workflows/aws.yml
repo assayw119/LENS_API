@@ -65,6 +65,12 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
+    - name: Print ECR_REGISTRY and IMAGE_TAG
+      run: |
+        echo "ECR_REGISTRY: $ECR_REGISTRY"
+        echo "IMAGE_TAG: $IMAGE_TAG"
+
+
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
       env:
