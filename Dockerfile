@@ -19,4 +19,5 @@ COPY . /app
 # Python 경로 설정
 # ENV PYTHONPATH=/app
 
-CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/usr/local/bin/poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
