@@ -45,7 +45,7 @@ DeferredReflection.prepare(engine)
 # 기본 경로에 대한 루트 엔드포인트
 @app.get("/")
 def root():
-    return {"message": "Hello Fastapi v3!"}
+    return {"message": "Hello Fastapi v5!"}
 
 
 @app.get("/items/{item_id}")
