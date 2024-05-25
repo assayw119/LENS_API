@@ -5,16 +5,16 @@ FROM python:3.12
 RUN pip install -U poetry
 
 # 경로 정의
-WORKDIR /workdir
+WORKDIR /app
 
 # 로컬에 있는 pyproject.toml, poetry.lock 파일을 컨테이너로 복사
-COPY poetry.lock pyproject.toml /workdir/
+COPY poetry.lock pyproject.toml /app/
 
 # Poetry를 이용하여 의존성 설치
 RUN poetry install --no-root --no-interaction
 
 # 로컬에 있는 소스코드를 컨테이너로 복사
-COPY . /workdir
+COPY . /app
 
 # Python 경로 설정
 ENV PYTHONPATH=/usr/local/bin/python3.12
@@ -28,6 +28,5 @@ RUN sed -i '1s|^.*$|#!/usr/local/bin/python3.12|' /usr/local/bin/poetry
 # 권한과 바이너리 위치 확인
 RUN ls -l /usr/local/bin/poetry
 
-WORKDIR /workdir/app
-CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["poetry", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
