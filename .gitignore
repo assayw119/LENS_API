@@ -160,4 +160,5 @@ cython_debug/
 #.idea/
 
 
-lambda-docker-fastapi/python/app/api/database.json
+app/api/database.json
+app/.env
