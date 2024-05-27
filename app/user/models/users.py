@@ -1,11 +1,13 @@
-from pydantic import BaseModel, EmailStr
-from sqlmodel import Field, SQLModel
+from sqlmodel import SQLModel, Field
+from typing import Optional
+from pydantic import EmailStr
 
 class User(SQLModel, table=True):
-    email: str = Field(primary_key=True)
+    email: str = Field(default=None, primary_key=True)
     username: str
-    exp: int
+    exp: Optional[int]
 
-class TokenResponse(BaseModel):
+class TokenResponse(SQLModel):
     access_token: str
+    refresh_token: str
     token_type: str

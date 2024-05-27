@@ -1,36 +1,51 @@
-from datetime import datetime
-from fastapi import HTTPException, status
+import os
+from datetime import datetime, timedelta
+from typing import Optional, Dict
 from jose import JWTError, jwt
-from pydantic import EmailStr
-from user.database.connection import Settings
+from pydantic_settings import BaseSettings
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Settings(BaseSettings):
+    SECRET_KEY: str
+    REFRESH_SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
 settings = Settings()
 
-def create_access_token(user: EmailStr, exp: int):
-    payload = {
-        "user": user,
-        "expires": exp
-    }
-    token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
-    return token
+def create_access_token(data: Dict[str, str], expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
 
-def verify_access_token(token: str):
+def create_refresh_token(data: Dict[str, str], expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.REFRESH_SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
+def decode_access_token(token: str):
     try:
-        data = jwt.decode(token, settings.SECRET_KEY, algorithms="HS256")
-        expires = data.get("expires")
-        if expires is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No access token supplied"
-            )
-        if datetime.utcnow() > datetime.utcfromtimestamp(expires):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Token expired!"
-            )
-        return data
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return payload
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid token"
-        )
+        return None
+
+def decode_refresh_token(token: str):
+    try:
+        payload = jwt.decode(token, settings.REFRESH_SECRET_KEY, algorithms=[settings.ALGORITHM])
+        return payload
+    except JWTError:
+        return None
