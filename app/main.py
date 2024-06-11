@@ -16,7 +16,6 @@ app = FastAPI(
     title="FastAPI Serverless",
     description="FastAPI를 활용한 서버리스",
     version="0.1.0",
-    root_path="/v1",
 )
 
 # CORS 정책 설정
@@ -49,7 +48,7 @@ def root():
 # health check
 @app.get("/health_check")
 async def health_check():
-    return {"code": 200, "message": "success", "data": None}
+    return {"status": "healthy"}
 
 # user db 생성
 @app.on_event("startup")
