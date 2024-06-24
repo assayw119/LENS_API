@@ -6,7 +6,7 @@ from api.order import router as data_router
 from api.execute_query import router as query_router
 from user.routes.users import user_router
 from user.database.connection import conn
-
+from api.llm import router as llm_router
 
 # CORS
 from fastapi.middleware.cors import CORSMiddleware
@@ -59,6 +59,7 @@ def on_startup():
 api_router.include_router(data_router)
 api_router.include_router(query_router)
 api_router.include_router(user_router)
+api_router.include_router(llm_router)
 app.include_router(api_router)
 
 handler = Mangum(app)

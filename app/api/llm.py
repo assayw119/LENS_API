@@ -7,9 +7,14 @@ import re
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
+from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
+from api import schemas
 
 # .env파일 로드
 load_dotenv()
+
+router = APIRouter(prefix="/llm", tags=["LLM"])
 
 
 class Settings(BaseSettings):
@@ -18,7 +23,7 @@ class Settings(BaseSettings):
 
 
 def callDatabase():
-    db = SQLDatabase.from_uri("sqlite:///app/sql_app.db")
+    db = SQLDatabase.from_uri("sqlite:///sql_app.db")
     db_info = db.get_table_info()
     db_table_name = db.get_usable_table_names()
     return db, db_info, db_table_name
@@ -72,21 +77,29 @@ def findSQL(answer):
     else:
         return -1
 
-def execute_llm(question):
+async def stream_llm(prompt_text: str):
     db, db_info, db_table_name = callDatabase()
     prompt = makeTemplate()
     prompt.partial(chat_history="쿼리 작성 방법에 대해 알려주세요.")
     memory, conversation = callLLM(prompt)
-    input_question = question
-    answer = conversation.predict(question = "데이터베이스 정보는 다음과 같습니다. " +
-                                db_info + " 테이블명은 다음과 같습니다. " + str(db_table_name) + 
-                                " 해당 데이터베이스를 바탕으로 사용자의 질문은 다음과 같습니다. " + input_question)
+    
+    # Langchain LLM 호출
+    answer = conversation.predict(question=prompt_text)
+    
+    # SQL 쿼리 추출 및 실행
     sql_query = findSQL(answer)
     if sql_query != -1:
-        print(db.run(sql_query))
+        result = db.run(sql_query)
+        yield result
     else:
-        print("No SQL query found.")
+        yield "No SQL query found."
 
-# print(memory.buffer)
-question = "customers 테이블의 모든 정보 추출해줘"
-execute_llm(question)
+@router.post("/execute_llm")
+async def execute_llm(request: schemas.PromptRequest):
+    # data = await request.json()
+    # prompt_text = data.get("prompt")
+    prompt_text = request.prompt
+    if not prompt_text:
+        return {"error": "No prompt provided."}
+
+    return StreamingResponse(stream_llm(prompt_text), media_type="text/plain")

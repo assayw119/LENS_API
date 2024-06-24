@@ -135,3 +135,7 @@ class OrderDetail(OrderDetailBase):
 # 사용자가 입력할 텍스트를 받기 위한 모델 정의
 class TextInput(BaseModel):
     text: str
+
+# 프롬프트 모델 정의
+class PromptRequest(BaseModel):
+    prompt: str
