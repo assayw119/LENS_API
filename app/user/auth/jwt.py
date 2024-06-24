@@ -5,6 +5,7 @@ from jose import JWTError, jwt
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
+# .env파일 로드
 load_dotenv()
 
 class Settings(BaseSettings):
