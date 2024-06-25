@@ -6,10 +6,12 @@ from langchain_openai import ChatOpenAI
 import re
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
+import json
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from api import schemas
+from api.execute_query import execute_query
 
 # .env파일 로드
 load_dotenv()
@@ -78,21 +80,26 @@ def findSQL(answer):
         return -1
 
 async def stream_llm(prompt_text: str):
-    db, db_info, db_table_name = callDatabase()
+    # db, db_info, db_table_name = callDatabase()
     prompt = makeTemplate()
     prompt.partial(chat_history="쿼리 작성 방법에 대해 알려주세요.")
     memory, conversation = callLLM(prompt)
     
     # Langchain LLM 호출
-    answer = conversation.predict(question=prompt_text)
+    answer = await conversation.apredict(question=prompt_text)  # 비동기로 호출
     
     # SQL 쿼리 추출 및 실행
     sql_query = findSQL(answer)
     if sql_query != -1:
-        result = db.run(sql_query)
-        yield result
+        try:
+            # 비동기 쿼리 실행
+            result = await execute_query(schemas.TextInput(text=sql_query))
+            yield json.dumps({"result": result})  # JSON 문자열로 변환하여 반환
+        except HTTPException as e:
+            yield json.dumps({"error": str(e.detail)})  # JSON 문자열로 변환하여 반환
     else:
-        yield "No SQL query found."
+        yield json.dumps({"error": "No valid SQL query found in the response."})  # JSON 문자열로 변환하여 반환
+
 
 @router.post("/execute_llm")
 async def execute_llm(request: schemas.PromptRequest):
