@@ -94,11 +94,12 @@ async def stream_llm(prompt_text: str):
         try:
             # 비동기 쿼리 실행
             result = await execute_query(schemas.TextInput(text=sql_query))
-            yield json.dumps({"result": result})  # JSON 문자열로 변환하여 반환
+            yield json.dumps(result)  # JSON 문자열로 변환하여 반환
         except HTTPException as e:
             yield json.dumps({"error": str(e.detail)})  # JSON 문자열로 변환하여 반환
     else:
         yield json.dumps({"error": "No valid SQL query found in the response."})  # JSON 문자열로 변환하여 반환
+
 
 
 @router.post("/execute_llm")
