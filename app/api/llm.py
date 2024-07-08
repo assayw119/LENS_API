@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
 
 def callDatabase():
-    db = SQLDatabase.from_uri("sqlite:///sql_app.db")
+    db = SQLDatabase.from_uri("sqlite:///./sql_app.db")
     db_info = db.get_table_info()
     db_table_name = db.get_usable_table_names()
     return db, db_info, db_table_name
@@ -33,11 +33,10 @@ def callDatabase():
 def makeTemplate():
     template = """
     당신은 10년차 데이터베이스 전문가 입니다. 여러 데이터를 가지고 있으며 사용자는 한 개 혹은 여러 개의 데이터를 조합하여 사용하고 싶어합니다.
-    사용자는 데이터사이언티스이며 데이터를 제공받아 새로운 인사이트를 도출하려고 합니다.
+    사용자는 데이터사이언티스이며 데이터를 제공받아 새로운 인사이트를 도출하려고 합니다. 테이블명에 주의하여 사용자에게 알맞은 정보를 제공해주세요.
     아래 조건에 맞춰 적절한 답변을 해주세요.
-    1. 사용자 질문에 알맞는 쿼리를 제공해주세요.
-    2. 해당 쿼리가 나오는 이유도 같이 설명해주세요.
-    3. 쿼리 실행 결과를 알려주세요.
+    1. 배열로 반환을 해주되, 배열 안의 첫번째 문자열에는 기본적인 당신의 응답(쿼리가 나오는 이유, 응답 상태 등)을 100자 이상 200자 이하로 해주고, 두번째 문자열에는 사용자 질문에 알맞는 쿼리만을 응답해주세요.
+    2. 백틱 ()`) 없이 배열의 형태로만 반환해줘
     
     #대화내용
     {chat_history}
@@ -46,6 +45,7 @@ def makeTemplate():
     엑셀전문가:"""
     prompt = PromptTemplate.from_template(template)
     return prompt
+
 
 def callLLM(prompt):
     settings = Settings()
@@ -70,7 +70,7 @@ def callLLM(prompt):
     return memory, conversation
 
 def findSQL(answer):
-    pattern = r"sql\n(.*?)\n"
+    pattern = r"sql\n(.*?);"
     match = re.search(pattern, answer, re.DOTALL)
     
     if match:
@@ -80,25 +80,40 @@ def findSQL(answer):
         return -1
 
 async def stream_llm(prompt_text: str):
-    # db, db_info, db_table_name = callDatabase()
+    db, db_info, db_table_name = callDatabase()
     prompt = makeTemplate()
     prompt.partial(chat_history="쿼리 작성 방법에 대해 알려주세요.")
     memory, conversation = callLLM(prompt)
     
     # Langchain LLM 호출
-    answer = await conversation.apredict(question=prompt_text)  # 비동기로 호출
-    
-    # SQL 쿼리 추출 및 실행
-    sql_query = findSQL(answer)
-    if sql_query != -1:
-        try:
-            # 비동기 쿼리 실행
-            result = await execute_query(schemas.TextInput(text=sql_query))
-            yield json.dumps(result)  # JSON 문자열로 변환하여 반환
-        except HTTPException as e:
-            yield json.dumps({"error": str(e.detail)})  # JSON 문자열로 변환하여 반환
+    answer = await conversation.apredict(question="데이터베이스 정보는 다음과 같습니다. " +
+                              db_info + " 테이블명은 다음과 같습니다. " + str(db_table_name) + 
+                              " 해당 데이터베이스를 바탕으로 사용자의 질문은 다음과 같습니다. " + prompt_text)  # 비동기로 호출
+    answer = json.loads(answer)
+    if answer[1]:
+        print('-----', answer, '-----')
+        print(answer[0], answer[1])
+
+        yield json.dumps(answer[0], ensure_ascii=False)
+        yield json.dumps(answer[1], ensure_ascii=False)
     else:
-        yield json.dumps({"error": "No valid SQL query found in the response."})  # JSON 문자열로 변환하여 반환
+        print('-----', answer, '-----')
+        print('Not Query!!')
+
+        yield json.dumps(answer[0], ensure_ascii=False)
+
+    # # SQL 쿼리 추출 및 실행
+    # sql_query = findSQL(answer)
+    # if sql_query != -1:
+    #     try:
+    #         # 비동기 쿼리 실행
+    #         result = await execute_query(schemas.TextInput(text=sql_query))
+    #         yield json.dumps(result)  # JSON 문자열로 변환하여 반환
+    #     except HTTPException as e:
+    #         yield json.dumps({"error": str(e.detail)})  # JSON 문자열로 변환하여 반환
+    # else:
+    #     yield json.dumps(answer, ensure_ascii=False)
+    #     #yield json.dumps({"error": "No valid SQL query found in the response."})  # JSON 문자열로 변환하여 반환
 
 
 
