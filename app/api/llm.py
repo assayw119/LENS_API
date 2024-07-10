@@ -1,17 +1,24 @@
 from langchain_community.utilities.sql_database import SQLDatabase
 from langchain.prompts import PromptTemplate
 from langchain.chains import ConversationChain
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
 from langchain_openai import ChatOpenAI
-import re
+from langchain_core.chat_history import InMemoryChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage, ToolMessage
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
-import json
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from api import schemas
-from api.execute_query import execute_query
+
+import inspect
+from typing import Union
+
+import mysql.connector
+from mysql.connector import Error
 
 # .env파일 로드
 load_dotenv()
@@ -22,107 +29,173 @@ router = APIRouter(prefix="/llm", tags=["LLM"])
 class Settings(BaseSettings):
     API_KEY: str
     API_BASE: str
+    DATABASE: str
+    DATABASE_HOST: str
+    DATABASE_USER: str
+    DATABASE_PASSWORD: str
 
 
-def callDatabase():
-    db = SQLDatabase.from_uri("sqlite:///./sql_app.db")
-    db_info = db.get_table_info()
-    db_table_name = db.get_usable_table_names()
-    return db, db_info, db_table_name
-
-def makeTemplate():
-    template = """
-    당신은 10년차 데이터베이스 전문가 입니다. 여러 데이터를 가지고 있으며 사용자는 한 개 혹은 여러 개의 데이터를 조합하여 사용하고 싶어합니다.
-    사용자는 데이터사이언티스이며 데이터를 제공받아 새로운 인사이트를 도출하려고 합니다. 테이블명에 주의하여 사용자에게 알맞은 정보를 제공해주세요.
-    아래 조건에 맞춰 적절한 답변을 해주세요.
-    1. 배열로 반환을 해주되, 배열 안의 첫번째 문자열에는 기본적인 당신의 응답(쿼리가 나오는 이유, 응답 상태 등)을 100자 이상 200자 이하로 해주고, 두번째 문자열에는 사용자 질문에 알맞는 쿼리만을 응답해주세요.
-    2. 백틱 ()`) 없이 배열의 형태로만 반환해줘
-    
-    #대화내용
-    {chat_history}
-    ----
-    사용자: {question}
-    엑셀전문가:"""
-    prompt = PromptTemplate.from_template(template)
-    return prompt
-
-
-def callLLM(prompt):
+def callLLM():
     settings = Settings()
-
     API_KEY = settings.API_KEY
     API_BASE = settings.API_BASE
     
     llm = ChatOpenAI(
         model="gpt-4o",
-        openai_api_key = API_KEY,
-        openai_api_base = API_BASE,
+        openai_api_key=API_KEY,
+        openai_api_base=API_BASE,
     )
     
-    memory = ConversationBufferMemory(memory_key="chat_history")
+    tools = [get_table_info, run_sql_query]
+    llm_with_tools = llm.bind_tools(tools)
+    chain = RunnableWithMessageHistory(llm_with_tools, get_session_history)
     
-    conversation = ConversationChain(
-        llm = llm,
-        prompt = prompt,
-        memory = memory,
-        input_key = "question"
+    return chain
+
+
+store = {}
+
+
+# 세션 히스토리를 가져오기
+def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
+    if session_id not in store:
+        store[session_id] = InMemoryChatMessageHistory()
+        return store[session_id]
+    
+    # session_id로 조회가 된다면 직전 3개의 message만 가져옴
+    memory = ConversationBufferWindowMemory(
+        chat_memory=store[session_id],
+        k=10,
+        return_messages=True,
     )
-    return memory, conversation
+    assert len(memory.memory_variables) == 1
+    key = memory.memory_variables[0]
+    messages = memory.load_memory_variables({})[key]
+    store[session_id] = InMemoryChatMessageHistory(messages=messages)
+    return store[session_id]
 
-def findSQL(answer):
-    pattern = r"sql\n(.*?);"
-    match = re.search(pattern, answer, re.DOTALL)
+
+@tool
+def get_table_info() -> str:
+    """Extract all table information from database
     
-    if match:
-        sql_query = match.group(1)
-        return sql_query
-    else:
-        return -1
+    Args:
+        None
+        
+    Returns:
+        str: Information about the all tables.
+    """
+    db = SQLDatabase.from_uri("sqlite:///./sql_app.db")
+    db_info = db.get_table_info()
+    return db_info
 
-async def stream_llm(prompt_text: str):
-    db, db_info, db_table_name = callDatabase()
-    prompt = makeTemplate()
-    prompt.partial(chat_history="쿼리 작성 방법에 대해 알려주세요.")
-    memory, conversation = callLLM(prompt)
+
+@tool
+def run_sql_query(query: str) -> str:
+    """Run a SQL query against the database.
     
-    # Langchain LLM 호출
-    answer = await conversation.apredict(question="데이터베이스 정보는 다음과 같습니다. " +
-                              db_info + " 테이블명은 다음과 같습니다. " + str(db_table_name) + 
-                              " 해당 데이터베이스를 바탕으로 사용자의 질문은 다음과 같습니다. " + prompt_text)  # 비동기로 호출
-    answer = json.loads(answer)
-    if answer[1]:
-        print('-----', answer, '-----')
-        print(answer[0], answer[1])
+    Args:
+        query (str): The SQL query to execute.
+        
+    Returns:
+        str: The result of the query.
+    """
+    # db = SQLDatabase.from_uri("sqlite:///./sql_app.db")
+    # result = db.run(query)
 
-        yield json.dumps(answer[0], ensure_ascii=False)
-        yield json.dumps(answer[1], ensure_ascii=False)
-    else:
-        print('-----', answer, '-----')
-        print('Not Query!!')
+    settings = Settings()
+    database = settings.DATABASE
+    host = settings.DATABASE_HOST
+    user = settings.DATABASE_USER
+    password = settings.DATABASE_PASSWORD
 
-        yield json.dumps(answer[0], ensure_ascii=False)
+    try:
+        # MariaDB에 연결
+        connection = mysql.connector.connect(
+            host=host,  # 또는 'localhost' for local connections
+            user=user,
+            password=password,
+            database= database
+        )
+        if connection.is_connected():            
+            cursor = connection.cursor()
 
-    # # SQL 쿼리 추출 및 실행
-    # sql_query = findSQL(answer)
-    # if sql_query != -1:
-    #     try:
-    #         # 비동기 쿼리 실행
-    #         result = await execute_query(schemas.TextInput(text=sql_query))
-    #         yield json.dumps(result)  # JSON 문자열로 변환하여 반환
-    #     except HTTPException as e:
-    #         yield json.dumps({"error": str(e.detail)})  # JSON 문자열로 변환하여 반환
-    # else:
-    #     yield json.dumps(answer, ensure_ascii=False)
-    #     #yield json.dumps({"error": "No valid SQL query found in the response."})  # JSON 문자열로 변환하여 반환
+            # 데이터베이스 버전 확인
+            cursor.execute("SELECT VERSION();")
+            record = cursor.fetchone()
+            print("MariaDB 버전:", record)
+            
+            # 데이터 조회
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            print("test_table의 데이터:")
+            for row in rows:
+                print(row)
+    
+    except Error as e:
+        raise HTTPException(status_code=404, detail=e)
+    
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+    
+    
+    return str(rows)
+
+
+async def process_message(user_prompt: str, session_id: str) -> str:
+    messages = [HumanMessage(user_prompt)]
+    chain = callLLM()
+
+    while True:
+        ai_msg = chain.invoke(
+            messages,
+            config={"configurable": {"session_id": session_id}},
+        )
+
+        if ai_msg.tool_calls:
+            new_messages = []
+            for tool_call in ai_msg.tool_calls:
+                selected_tool = {
+                    "get_table_info": get_table_info,
+                    "run_sql_query": run_sql_query
+                }.get(tool_call["name"].lower())
+
+                if selected_tool:
+                    try:
+                        if inspect.iscoroutinefunction(selected_tool.invoke):
+                            tool_output = await selected_tool.invoke(tool_call["args"])
+                        else:
+                            tool_output = selected_tool.invoke(tool_call["args"])
+                    except Exception as e:
+                        # Handle exceptions raised during tool invocation
+                        tool_output = str(e)
+                        # Log or handle the error appropriately
+
+                    new_messages.append(ToolMessage(content=str(tool_output), tool_call_id=tool_call["id"]))
+                else:
+                    # Handle case where tool is not found for the given tool_call
+                    new_messages.append(ToolMessage(content=f"Tool '{tool_call['name']}' not found", tool_call_id=tool_call["id"]))
+
+            messages = new_messages
+        else:
+            return ai_msg.content
 
 
 
 @router.post("/execute_llm")
 async def execute_llm(request: schemas.PromptRequest):
-    # data = await request.json()
-    # prompt_text = data.get("prompt")
     prompt_text = request.prompt
     if not prompt_text:
         return {"error": "No prompt provided."}
-
-    return StreamingResponse(stream_llm(prompt_text), media_type="text/plain")
+    
+    session_id = "1"  # This can be dynamic based on user session management
+    
+    response = await process_message(prompt_text, session_id)
+    print(response)
+    
+    async def generate():
+        yield response
+    
+    return StreamingResponse(generate(), media_type="text/plain")
