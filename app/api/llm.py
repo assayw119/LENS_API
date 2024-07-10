@@ -30,19 +30,39 @@ def callDatabase():
     db_table_name = db.get_usable_table_names()
     return db, db_info, db_table_name
 
+
 def makeTemplate():
     template = """
-    당신은 10년차 데이터베이스 전문가 입니다. 여러 데이터를 가지고 있으며 사용자는 한 개 혹은 여러 개의 데이터를 조합하여 사용하고 싶어합니다.
-    사용자는 데이터사이언티스이며 데이터를 제공받아 새로운 인사이트를 도출하려고 합니다. 테이블명에 주의하여 사용자에게 알맞은 정보를 제공해주세요.
-    아래 조건에 맞춰 적절한 답변을 해주세요.
-    1. 배열로 반환을 해주되, 배열 안의 첫번째 문자열에는 기본적인 당신의 응답(쿼리가 나오는 이유, 응답 상태 등)을 100자 이상 200자 이하로 해주고, 두번째 문자열에는 사용자 질문에 알맞는 쿼리만을 응답해주세요.
-    2. 백틱 ()`) 없이 배열의 형태로만 반환해줘
+    당신은 매우 유능한 데이터분석가입니다.
     
-    #대화내용
-    {chat_history}
-    ----
-    사용자: {question}
-    엑셀전문가:"""
+    먼저 다음의 지시사항을 반드시 준수하세요.
+    --- START OF CONDITIONS ---
+    - 작업 순서를 반드시 지킬 것.
+    - 질문의 의도를 정확히 반영할 것.
+    --- END OF CONDITIONS ---
+    
+    그런 다음 데이터베이스 정보를 확인하세요.
+    --- START OF DATABASE INFO ---
+    {db_info}
+    --- END OF DATABASE INFO ---
+    
+    이제 사용자의 질문을 확인하고, 순서에 따라 작업을 진행해주세요.
+    --- START OF QUESTION ---
+    {question}
+    --- END OF QUESTION ---
+    
+    --- START OF TASK ---
+    빈 배열이 주어집니다. 이 배열에는 다음의 내용을 순서대로 담아주세요.
+    1. 질문이 데이터베이스를 활용해 쿼리를 생성할 수 있다면 쿼리 생성을 위한 전략과 실행시간, 접근방법을 문자열로 배열에 추가 하고 그렇지 않다면 자연스러운 응답을 문자열로 배열에 추가하세요.
+    2. 질문이 데이터베이스를 활용해 쿼리를 생성할 수 있다면 생성된 쿼리를 문자열로 배열에 추가하고 그렇지 않으면 빈 문자열을 담아주세요.
+    --- END OF TASK ---
+    
+    작업을 완료하면 배열을 반환해주세요.
+    배열외의 내용은 모두 무시됩니다.
+    
+    백틱(`)을 사용한 코드 블록은 작성하지 마세요.
+    오직 배열만 반환해주세요.
+    """
     prompt = PromptTemplate.from_template(template)
     return prompt
 
@@ -52,53 +72,57 @@ def callLLM(prompt):
 
     API_KEY = settings.API_KEY
     API_BASE = settings.API_BASE
-    
+
     llm = ChatOpenAI(
         model="gpt-4o",
-        openai_api_key = API_KEY,
-        openai_api_base = API_BASE,
+        openai_api_key=API_KEY,
+        openai_api_base=API_BASE,
     )
-    
+
     memory = ConversationBufferMemory(memory_key="chat_history")
-    
+
     conversation = ConversationChain(
-        llm = llm,
-        prompt = prompt,
-        memory = memory,
-        input_key = "question"
+        llm=llm, prompt=prompt, memory=memory, input_key="question"
     )
     return memory, conversation
+
 
 def findSQL(answer):
     pattern = r"sql\n(.*?);"
     match = re.search(pattern, answer, re.DOTALL)
-    
+
     if match:
         sql_query = match.group(1)
         return sql_query
     else:
         return -1
 
+
 async def stream_llm(prompt_text: str):
     db, db_info, db_table_name = callDatabase()
     prompt = makeTemplate()
     prompt.partial(chat_history="쿼리 작성 방법에 대해 알려주세요.")
     memory, conversation = callLLM(prompt)
-    
+
     # Langchain LLM 호출
-    answer = await conversation.apredict(question="데이터베이스 정보는 다음과 같습니다. " +
-                              db_info + " 테이블명은 다음과 같습니다. " + str(db_table_name) + 
-                              " 해당 데이터베이스를 바탕으로 사용자의 질문은 다음과 같습니다. " + prompt_text)  # 비동기로 호출
+    answer = await conversation.predict(
+        question="데이터베이스 정보는 다음과 같습니다. "
+        + db_info
+        + " 테이블명은 다음과 같습니다. "
+        + str(db_table_name)
+        + " 해당 데이터베이스를 바탕으로 사용자의 질문은 다음과 같습니다. "
+        + prompt_text
+    )  # 비동기로 호출
     answer = json.loads(answer)
     if answer[1]:
-        print('-----', answer, '-----')
+        print("-----", answer, "-----")
         print(answer[0], answer[1])
 
         yield json.dumps(answer[0], ensure_ascii=False)
         yield json.dumps(answer[1], ensure_ascii=False)
     else:
-        print('-----', answer, '-----')
-        print('Not Query!!')
+        print("-----", answer, "-----")
+        print("Not Query!!")
 
         yield json.dumps(answer[0], ensure_ascii=False)
 
@@ -114,7 +138,6 @@ async def stream_llm(prompt_text: str):
     # else:
     #     yield json.dumps(answer, ensure_ascii=False)
     #     #yield json.dumps({"error": "No valid SQL query found in the response."})  # JSON 문자열로 변환하여 반환
-
 
 
 @router.post("/execute_llm")

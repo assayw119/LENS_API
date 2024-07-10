@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Path, HTTPException, Depends
-from api import schemas, crud
+from app.api import schemas, crud
 from sqlalchemy.orm import Session
-from api.database import SessionLocal, engine, Base
+from app.api.database import SessionLocal, engine, Base
 from sqlalchemy.ext.declarative import DeferredReflection
 
 
