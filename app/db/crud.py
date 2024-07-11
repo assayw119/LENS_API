@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from . import models, schemas
+from app.db import models, schemas
 
 # Create
 def create_productline(db: Session, productline: schemas.ProductLineCreate):
