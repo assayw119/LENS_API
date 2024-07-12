@@ -59,65 +59,65 @@ app.add_middleware(
 
 
 # 미들웨어 정의
-@app.middleware("http")
-async def verify_token_middleware(request: Request, call_next):
-    # 토큰 검증 미들웨어
+# @app.middleware("http")
+# async def verify_token_middleware(request: Request, call_next):
+#     # 토큰 검증 미들웨어
 
-    # 헤더에 Authorization 필드가 없는 경우
-    if "authorization" not in request.headers:
-        # 401 Unauthorized
-        return JSONResponse(status_code=401, content={"detail": "Authorization header가 필요합니다"})
+#     # 헤더에 Authorization 필드가 없는 경우
+#     if "authorization" not in request.headers:
+#         # 401 Unauthorized
+#         return JSONResponse(status_code=401, content={"detail": "Authorization header가 필요합니다"})
     
-    auth = request.headers["authorization"]
-    scheme, _, token = auth.partition(" ")
+#     auth = request.headers["authorization"]
+#     scheme, _, token = auth.partition(" ")
 
-    if scheme.lower() != "bearer":
-        return JSONResponse(status_code=401, content={"detail": "Authorization scheme이 잘못되었습니다"})
+#     if scheme.lower() != "bearer":
+#         return JSONResponse(status_code=401, content={"detail": "Authorization scheme이 잘못되었습니다"})
 
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        user_id = payload.get("sub")
-        if user_id is None:
-            return JSONResponse(status_code=401, content={"detail": "Token payload missing 'sub' field"})
+#     try:
+#         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+#         user_id = payload.get("sub")
+#         if user_id is None:
+#             return JSONResponse(status_code=401, content={"detail": "Token payload missing 'sub' field"})
         
-        async with get_session() as db:
-            user = crud.get_user(db, user_id=user_id)
-            if user is None:
-                return JSONResponse(status_code=401, content={"detail": "User not found"})
+#         async with get_session() as db:
+#             user = crud.get_user(db, user_id=user_id)
+#             if user is None:
+#                 return JSONResponse(status_code=401, content={"detail": "User not found"})
 
-            request.state.user = user
-    except JWTError:
-        # Access token이 만료된 경우
-        if "x-refresh-token" in request.headers:
-            refresh_token = request.headers["x-refresh-token"]
-            try:
-                refresh_payload = jwt.decode(refresh_token, settings.REFRESH_SECRET_KEY, algorithms=[settings.ALGORITHM])
-                user_id = refresh_payload.get("sub")
-                if user_id is None:
-                    return JSONResponse(status_code=401, content={"detail": "Refresh token payload missing 'sub' field"})
+#             request.state.user = user
+#     except JWTError:
+#         # Access token이 만료된 경우
+#         if "x-refresh-token" in request.headers:
+#             refresh_token = request.headers["x-refresh-token"]
+#             try:
+#                 refresh_payload = jwt.decode(refresh_token, settings.REFRESH_SECRET_KEY, algorithms=[settings.ALGORITHM])
+#                 user_id = refresh_payload.get("sub")
+#                 if user_id is None:
+#                     return JSONResponse(status_code=401, content={"detail": "Refresh token payload missing 'sub' field"})
 
-                async with get_session() as db:
-                    refresh_token_record = crud.get_refresh_token(db, token=refresh_token)
-                    if not refresh_token_record or refresh_token_record.is_revoked:
-                        return JSONResponse(status_code=401, content={"detail": "Invalid or revoked refresh token"})
+#                 async with get_session() as db:
+#                     refresh_token_record = crud.get_refresh_token(db, token=refresh_token)
+#                     if not refresh_token_record or refresh_token_record.is_revoked:
+#                         return JSONResponse(status_code=401, content={"detail": "Invalid or revoked refresh token"})
 
-                    user = crud.get_user(db, user_id=user_id)
-                    if user is None:
-                        return JSONResponse(status_code=401, content={"detail": "User not found"})
+#                     user = crud.get_user(db, user_id=user_id)
+#                     if user is None:
+#                         return JSONResponse(status_code=401, content={"detail": "User not found"})
 
-                    request.state.user = user
-            except JWTError:
-                return JSONResponse(status_code=401, content={"detail": "Invalid refresh token"})
-        else:
-            return JSONResponse(status_code=401, content={"detail": "Invalid access token"})
+#                     request.state.user = user
+#             except JWTError:
+#                 return JSONResponse(status_code=401, content={"detail": "Invalid refresh token"})
+#         else:
+#             return JSONResponse(status_code=401, content={"detail": "Invalid access token"})
 
-    response = await call_next(request)
-    return response
+#     response = await call_next(request)
+#     return response
 
 # 기본 경로에 대한 루트 엔드포인트
 @app.get("/")
 def root():
-    return {"message": "Hello Fastapi, last deploy is 2024-07-13"}
+    return {"message": "Hello Fastapi v29, last deploy is 2024-07-13"}
 
 
 # health check
