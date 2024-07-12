@@ -117,7 +117,7 @@ async def verify_token_middleware(request: Request, call_next):
 # 기본 경로에 대한 루트 엔드포인트
 @app.get("/")
 def root():
-    return {"message": "Hello Fastapi v5!"}
+    return {"message": "Hello Fastapi, last deploy is 2024-07-13"}
 
 
 # health check
