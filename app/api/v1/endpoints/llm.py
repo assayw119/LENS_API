@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from api import schemas
+from app.db import schemas
 
 import inspect
 from typing import Union
@@ -23,7 +23,7 @@ from mysql.connector import Error
 # .env파일 로드
 load_dotenv()
 
-router = APIRouter(prefix="/llm", tags=["LLM"])
+router = APIRouter()
 
 
 class Settings(BaseSettings):
@@ -33,25 +33,6 @@ class Settings(BaseSettings):
     DATABASE_HOST: str
     DATABASE_USER: str
     DATABASE_PASSWORD: str
-
-
-def callLLM():
-    settings = Settings()
-    API_KEY = settings.API_KEY
-    API_BASE = settings.API_BASE
-    
-    llm = ChatOpenAI(
-        model="gpt-4o",
-        openai_api_key=API_KEY,
-        openai_api_base=API_BASE,
-    )
-    
-    tools = [get_table_info, run_sql_query]
-    llm_with_tools = llm.bind_tools(tools)
-    chain = RunnableWithMessageHistory(llm_with_tools, get_session_history)
-    
-    return chain
-
 
 store = {}
 
@@ -144,6 +125,24 @@ def run_sql_query(query: str) -> str:
     return str(rows)
 
 
+def callLLM():
+    settings = Settings()
+    API_KEY = settings.API_KEY
+    API_BASE = settings.API_BASE
+    
+    llm = ChatOpenAI(
+        model="gpt-4o",
+        openai_api_key=API_KEY,
+        openai_api_base=API_BASE,
+    )
+    
+    tools = [get_table_info, run_sql_query]
+    llm_with_tools = llm.bind_tools(tools)
+    chain = RunnableWithMessageHistory(llm_with_tools, get_session_history)
+    
+    return chain
+
+
 async def process_message(user_prompt: str, session_id: str) -> str:
     messages = [HumanMessage(user_prompt)]
     chain = callLLM()
@@ -181,8 +180,6 @@ async def process_message(user_prompt: str, session_id: str) -> str:
             messages = new_messages
         else:
             return ai_msg.content
-
-
 
 @router.post("/execute_llm")
 async def execute_llm(request: schemas.PromptRequest):

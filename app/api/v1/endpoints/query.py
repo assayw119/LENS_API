@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException
-from api import schemas
-from api.database import database
+from app.db import schemas
+from app.db.database import database
 from sqlalchemy import text
 import logging
 
-router = APIRouter(prefix="/query", tags=["Query"])
+router = APIRouter()
 metadata_order = {"name": "Query API Version 1", "description": "Version 1 Query API"}
 
 logger = logging.getLogger("uvicorn.error")

@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 
-from user.auth.jwt import create_access_token, create_refresh_token, decode_refresh_token
-from user.database.connection import get_session
-from user.models.users import User, TokenResponse
-from user.auth.jwt import settings
+from app.user.auth.jwt import create_access_token, create_refresh_token, decode_refresh_token
+from app.user.database.connection import get_session
+from app.user.models.users import User, TokenResponse
+from app.user.auth.jwt import settings
 
 user_router = APIRouter(
     tags=["User"],

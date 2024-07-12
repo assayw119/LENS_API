@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Path, HTTPException, Depends
-from api import schemas, crud
+from app.db import schemas, crud
 from sqlalchemy.orm import Session
-from api.database import SessionLocal, engine, Base
+from app.db.database import SessionLocal, engine, Base
 from sqlalchemy.ext.declarative import DeferredReflection
 
 
-router = APIRouter(prefix="/data", tags=["Data"])
+router = APIRouter()
 metadata_order = {"name": "Data API Version 1", "description": "Version 1 DATA API"}
 
 # DeferredReflection을 통해 스키마를 나중에 반영
