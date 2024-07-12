@@ -117,7 +117,7 @@ app.add_middleware(
 # 기본 경로에 대한 루트 엔드포인트
 @app.get("/")
 def root():
-    return {"message": "Hello Fastapi v29, last deploy is 2024-07-13"}
+    return {"message": "Hello Fastapi v30, last deploy is 2024-07-13"}
 
 
 # health check
