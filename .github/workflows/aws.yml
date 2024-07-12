@@ -80,8 +80,10 @@ jobs:
         # be deployed to ECS.
         if [ ${{ steps.determine-architecture.outputs.arch }} = 'aarch64' ]; then
           docker build --platform linux/arm64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          echo "build success at aarch64"
         else
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          echo "build success at x86_64"
         fi
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
