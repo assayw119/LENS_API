@@ -11,7 +11,7 @@ class ProductLine(Base):
     productLine = Column(String(50), primary_key=True)
     textDescription = Column(String(4000))
     htmlDescription = Column(Text)
-    image = Column(String)  # Assuming mediumblob is stored as a string path
+    image = Column(String(255))  # Assuming mediumblob is stored as a string path
 
     products = relationship("Product", back_populates="product_line")
 
