@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import query, llm, order
+from api.v1.endpoints import query, llm, order
 
 router = APIRouter()
 router.include_router(query.router, prefix="/query", tags=["Query"])

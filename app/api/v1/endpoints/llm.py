@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from app.db import schemas
+from db import schemas
 
 import inspect
 from typing import Union

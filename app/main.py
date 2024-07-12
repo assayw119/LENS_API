@@ -4,17 +4,19 @@ from mangum import Mangum
 from contextlib import asynccontextmanager
 from jose import JWTError, jwt
 
-from app.user.routes.users import user_router
-from app.user.database.connection import conn
+from user.routes.users import user_router
+from user.database.connection import conn
 
-from app.api.v1.routers import router as v1_router
+from api.v1.routers import router as v1_router
 
 from sqlalchemy.orm import Session
-from app.core.config import settings
-from app.db.session import get_session
-from app.db import crud, models, schemas
+from core.config import settings
+from db.session import get_session
+from db import crud, models, schemas
 from datetime import datetime, timedelta
 from typing import Generator
+from fastapi.responses import JSONResponse
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

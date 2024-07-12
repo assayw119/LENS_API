@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
-from app.db import schemas
-from app.db.database import database
+from db import schemas
+from db.database import database
 from sqlalchemy import text
 import logging
 
