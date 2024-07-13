@@ -4,10 +4,11 @@ Example of eventsourcing with FastAPI
 ## Getting Started
 1. Install dependencies
 ```zsh
-pip install -r requirements.txt
+poetry env use python3.12
+poetry install --no-root
 ```
 2. Start FastAPI process
 ```zsh
-python main.py
+uvicorn main:app --reload
 ```
-3. Open local API docs [http://localhost:5000/docs](http://localhost:5000/docs)
+3. Open local API docs [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)

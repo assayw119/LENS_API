@@ -8,9 +8,12 @@ from app.core.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
 
+# Create SQLAlchemy engine
 engine = create_engine(
     "mariadb+mariadbconnector://root:lens@43.202.9.204/db", echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Base class for declarative class definitions
 Base = declarative_base()
 
 # SQLAlchemy 세션 관리 (동기)

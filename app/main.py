@@ -69,8 +69,8 @@ async def verify_token_middleware(request: Request, call_next):
     auth = request.headers["authorization"]
     scheme, _, token = auth.partition(" ")
 
-    if scheme.lower() != "bearer":
-        return JSONResponse(status_code=401, content={"detail": "Authorization scheme이 잘못되었습니다"})
+#     if scheme.lower() != "bearer":
+#         return JSONResponse(status_code=401, content={"detail": "Authorization scheme이 잘못되었습니다"})
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY,
@@ -111,8 +111,8 @@ async def verify_token_middleware(request: Request, call_next):
         else:
             return JSONResponse(status_code=401, content={"detail": "Access token이 만료되었습니다."})
 
-    response = await call_next(request)
-    return response
+#     response = await call_next(request)
+#     return response
 
 # 기본 경로에 대한 루트 엔드포인트
 
