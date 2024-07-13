@@ -5,6 +5,7 @@ import logging
 from app.db.database import get_session, metadata
 from sqlalchemy.orm import Session
 from langchain_community.utilities.sql_database import SQLDatabase
+from app.core.config import settings
 
 router = APIRouter()
 
@@ -34,7 +35,7 @@ async def get_table_list(session: Session = Depends(get_session)):
         #     for constraint in table.constraints:
         #         print(f"  Constraint: {constraint.name}")
         # MariaDB 데이터베이스 URI
-        DATABASE_URI = "mysql+mariadbconnector://root:lens@43.202.9.204/db"
+        DATABASE_URI = settings.DATABASE_URL
 
         # SQLDatabase 인스턴스 생성
         db = SQLDatabase.from_uri(DATABASE_URI)
