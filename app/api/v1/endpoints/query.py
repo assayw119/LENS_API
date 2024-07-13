@@ -9,9 +9,9 @@ router = APIRouter()
 metadata_order = {"name": "Query API Version 1",
                   "description": "Version 1 Query API"}
 
-logger = logging.getLogger("uvicorn.error")
-
 # 입력된 SQL 쿼리를 실행하여 결과를 반환하는 엔드포인트
+
+logger = logging.getLogger("uvicorn.error")
 
 
 @router.post("/execute_query")

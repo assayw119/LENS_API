@@ -4,11 +4,12 @@ from mangum import Mangum
 from contextlib import asynccontextmanager
 from jose import JWTError, jwt
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
+from sqlalchemy.future import select
 
 from app.api.v1.routers import router as v1_router
 from app.core.config import settings
-from app.db.database import init_db, get_session
+from app.db.database import init_db, get_async_session
 from app.db.models import User, RefreshToken
 
 
@@ -50,15 +51,18 @@ app.add_middleware(
 
 @app.middleware("http")
 async def verify_token_middleware(request: Request, call_next):
+    # 프리플라이트 요청 확인 및 허용
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
     # Swagger UI와 ReDoc에 대한 요청은 토큰 검증을 건너 뛰기
     if request.url.path in ["/docs",
                             "/docs/oauth2-redirect",
                             "/redoc",
                             "/openapi.json",
-                            "/heath_check",
+                            "/health_check",
                             "/v1/user/login",
                             "/v1/user/token/refresh",
-                            "/v1/table/get_table_list"
                             ]:
         return await call_next(request)
 
@@ -69,23 +73,23 @@ async def verify_token_middleware(request: Request, call_next):
     auth = request.headers["authorization"]
     scheme, _, token = auth.partition(" ")
 
-#     if scheme.lower() != "bearer":
-#         return JSONResponse(status_code=401, content={"detail": "Authorization scheme이 잘못되었습니다"})
-
+    if scheme.lower() != "bearer":
+        return JSONResponse(status_code=401, content={"detail": "Authorization scheme이 잘못되었습니다"})
     try:
         payload = jwt.decode(token, settings.SECRET_KEY,
                              algorithms=[settings.ALGORITHM])
-        email = payload.get("sub")
-        if email is None:
+
+        user_id = payload.get("sub")
+        if user_id is None:
             return JSONResponse(status_code=401, content={"detail": "페이로드에 'sub' 필드가 누락되었습니다."})
 
-        async with get_session() as db:
-            user = db.query(User).filter(User.email == email).first()
+        async with get_async_session() as db:
+            result = await db.execute(select(User).filter(User.id == int(user_id)))
+            user = result.scalars().first()
             if user is None:
                 return JSONResponse(status_code=401, content={"detail": "유저를 찾을 수 없습니다."})
-
             request.state.user = user
-    except JWTError:
+    except JWTError as e:
         # Access token이 만료된 경우
         if "x-refresh-token" in request.headers:
             refresh_token = request.headers["x-refresh-token"]
@@ -96,13 +100,15 @@ async def verify_token_middleware(request: Request, call_next):
                 if user_id is None:
                     return JSONResponse(status_code=401, content={"detail": "refresh token 페이로드에 'sub' 필드가 누락되었습니다."})
 
-                async with get_session() as db:
-                    refresh_token_record = db.query(RefreshToken).filter(
-                        RefreshToken.user_id == user_id).first()
+                async with get_async_session() as db:
+                    result = await db.execute(select(RefreshToken).filter(RefreshToken.user_id == user_id))
+                    refresh_token_record = result.scalars().first()
                     if not refresh_token_record or refresh_token_record.is_revoked:
                         return JSONResponse(status_code=401, content={"detail": "유효하지 않거나 취소된 refresh token입니다."})
 
-                    user = db.query(User).filter(User.id == user_id).first()
+                    result = await db.execute(select(User).filter(User.id == user_id))
+                    user = result.scalars().first()
+                    print(f"User set in request.state: {user}")
                     if user is None:
                         return JSONResponse(status_code=401, content={"detail": "유저를 찾을 수 없습니다."})
 
@@ -111,10 +117,8 @@ async def verify_token_middleware(request: Request, call_next):
         else:
             return JSONResponse(status_code=401, content={"detail": "Access token이 만료되었습니다."})
 
-#     response = await call_next(request)
-#     return response
-
-# 기본 경로에 대한 루트 엔드포인트
+    response = await call_next(request)
+    return response
 
 
 @app.get("/")

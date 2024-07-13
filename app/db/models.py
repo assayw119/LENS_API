@@ -17,7 +17,8 @@ class ProductLine(Base):
     productLine = Column(String(50), unique=True, nullable=False)
     textDescription = Column(String(4000))
     htmlDescription = Column(Text)
-    image = Column(String(255))  # Assuming mediumblob is stored as a string path
+    # Assuming mediumblob is stored as a string path
+    image = Column(String(255))
 
     products = relationship("Product", back_populates="product_line")
 
@@ -180,6 +181,7 @@ class Session(Base):
     start_time = Column(DateTime, default=datetime.now)
     end_time = Column(DateTime)
     status = Column(String(20), default='active')
+    code = Column(String(255), nullable=False)
 
     user = relationship("User", back_populates="sessions")
     messages = relationship("Message", back_populates="session")
