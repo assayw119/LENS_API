@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from db import schemas
+from app.db import schemas
 
 from app.core.llm import process_message
 
