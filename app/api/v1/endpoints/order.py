@@ -1,18 +1,20 @@
 from fastapi import APIRouter, Path, HTTPException, Depends
-from db import schemas, crud
+from app.db import schemas, crud
 from sqlalchemy.orm import Session
-from db.database import SessionLocal, engine, Base
+from app.db.database import SessionLocal, engine, Base
 from sqlalchemy.ext.declarative import DeferredReflection
 
 
 router = APIRouter()
-metadata_order = {"name": "Data API Version 1", "description": "Version 1 DATA API"}
+metadata_order = {"name": "Data API Version 1",
+                  "description": "Version 1 DATA API"}
 
 # DeferredReflection을 통해 스키마를 나중에 반영
 DeferredReflection.prepare(engine)
 
 # Dependency
 Base.metadata.create_all(bind=engine)
+
 
 def get_db():
     db = SessionLocal()
@@ -27,6 +29,7 @@ def get_db():
 def create_productline(productline: schemas.ProductLineCreate, db: Session = Depends(get_db)):
     return crud.create_productline(db=db, productline=productline)
 
+
 @router.get(path="/productlines/{productline_id}", response_model=schemas.ProductLine)
 def read_productline(productline_id: str, db: Session = Depends(get_db)):
     db_productline = crud.get_productline(db=db, productline_id=productline_id)
@@ -35,9 +38,12 @@ def read_productline(productline_id: str, db: Session = Depends(get_db)):
     return db_productline
 
 # API endpoints for Product
+
+
 @router.post(path="/products/", response_model=schemas.Product)
 def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
     return crud.create_product(db=db, product=product)
+
 
 @router.get(path="/products/{product_code}", response_model=schemas.Product)
 def read_product(product_code: str, db: Session = Depends(get_db)):
@@ -47,9 +53,12 @@ def read_product(product_code: str, db: Session = Depends(get_db)):
     return db_product
 
 # API endpoints for Office
+
+
 @router.post(path="/offices/", response_model=schemas.Office)
 def create_office(office: schemas.OfficeCreate, db: Session = Depends(get_db)):
     return crud.create_office(db=db, office=office)
+
 
 @router.get(path="/offices/{office_code}", response_model=schemas.Office)
 def read_office(office_code: str, db: Session = Depends(get_db)):
@@ -59,9 +68,12 @@ def read_office(office_code: str, db: Session = Depends(get_db)):
     return db_office
 
 # API endpoints for Employee
+
+
 @router.post(path="/employees/", response_model=schemas.Employee)
 def create_employee(employee: schemas.EmployeeCreate, db: Session = Depends(get_db)):
     return crud.create_employee(db=db, employee=employee)
+
 
 @router.get(path="/employees/{employee_number}", response_model=schemas.Employee)
 def read_employee(employee_number: int, db: Session = Depends(get_db)):
@@ -71,9 +83,12 @@ def read_employee(employee_number: int, db: Session = Depends(get_db)):
     return db_employee
 
 # API endpoints for Customer
+
+
 @router.post(path="/customers/", response_model=schemas.Customer)
 def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_db)):
     return crud.create_customer(db=db, customer=customer)
+
 
 @router.get(path="/customers/{customer_number}", response_model=schemas.Customer)
 def read_customer(customer_number: int, db: Session = Depends(get_db)):
@@ -83,21 +98,28 @@ def read_customer(customer_number: int, db: Session = Depends(get_db)):
     return db_customer
 
 # API endpoints for Payment
+
+
 @router.post(path="/payments/", response_model=schemas.Payment)
 def create_payment(payment: schemas.PaymentCreate, db: Session = Depends(get_db)):
     return crud.create_payment(db=db, payment=payment)
 
+
 @router.get(path="/payments/{customer_number}/{check_number}", response_model=schemas.Payment)
 def read_payment(customer_number: int, check_number: str, db: Session = Depends(get_db)):
-    db_payment = crud.get_payment(db=db, customer_number=customer_number, check_number=check_number)
+    db_payment = crud.get_payment(
+        db=db, customer_number=customer_number, check_number=check_number)
     if db_payment is None:
         raise HTTPException(status_code=404, detail="Payment not found")
     return db_payment
 
 # API endpoints for Order
+
+
 @router.post(path="/orders/", response_model=schemas.Order)
 def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db)):
     return crud.create_order(db=db, order=order)
+
 
 @router.get(path="/orders/{order_number}", response_model=schemas.Order)
 def read_order(order_number: int, db: Session = Depends(get_db)):
@@ -107,13 +129,17 @@ def read_order(order_number: int, db: Session = Depends(get_db)):
     return db_order
 
 # API endpoints for OrderDetail
+
+
 @router.post(path="/orderdetails/", response_model=schemas.OrderDetail)
 def create_orderdetail(orderdetail: schemas.OrderDetailCreate, db: Session = Depends(get_db)):
     return crud.create_orderdetail(db=db, orderdetail=orderdetail)
 
+
 @router.get(path="/orderdetails/{order_number}/{product_code}", response_model=schemas.OrderDetail)
 def read_orderdetail(order_number: int, product_code: str, db: Session = Depends(get_db)):
-    db_orderdetail = crud.get_orderdetail(db=db, order_number=order_number, product_code=product_code)
+    db_orderdetail = crud.get_orderdetail(
+        db=db, order_number=order_number, product_code=product_code)
     if db_orderdetail is None:
         raise HTTPException(status_code=404, detail="Order detail not found")
     return db_orderdetail
