@@ -1,10 +1,10 @@
-from app.core.llm import process_message
+from core.llm import process_message
 from fastapi import Request, APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from fastapi.responses import StreamingResponse
-from app.db import schemas
-from app.db.database import get_session
-from app.db.models import Message, Session as SessionModel
+from db import schemas
+from db.database import get_session
+from db.models import Message, Session as SessionModel
 import uuid
 from datetime import datetime
 
@@ -14,7 +14,7 @@ store = {}
 
 
 @router.post("/execute_llm")
-async def execute_llm(request: Request, session: Session = Depends(get_session)):
+async def execute_llm(request: schemas.PromptRequest, session: Session = Depends(get_session)):
     if not hasattr(request.state, 'user'):
         raise HTTPException(status_code=401, detail="사용자 정보를 찾을 수 없습니다.")
 

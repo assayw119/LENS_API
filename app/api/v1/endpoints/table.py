@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException, Depends
-from app.db import schemas
+from db import schemas
 from sqlalchemy import text
 import logging
-from app.db.database import get_session, metadata
+from db.database import get_session, metadata
 from sqlalchemy.orm import Session
 from langchain_community.utilities.sql_database import SQLDatabase
-from app.core.config import settings
+from core.config import settings
 
 router = APIRouter()
 

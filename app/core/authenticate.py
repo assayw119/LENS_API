@@ -1,6 +1,6 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from app.api.v1.dependencies import verify_access_token
+from api.v1.dependencies import verify_access_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/user/login")
 

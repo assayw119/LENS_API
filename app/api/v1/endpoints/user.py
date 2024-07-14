@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from datetime import timedelta
-from app.core.jwt import create_access_token, create_refresh_token, decode_refresh_token
-from app.core.config import settings
-from app.db.models import User, TokenResponse, UserBase, RefreshToken
-from app.db.database import get_session
+from core.jwt import create_access_token, create_refresh_token, decode_refresh_token
+from core.config import settings
+from db.models import User, TokenResponse, UserBase, RefreshToken
+from db.database import get_session
 
 router = APIRouter()
 

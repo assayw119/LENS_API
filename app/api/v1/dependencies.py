@@ -2,11 +2,11 @@ from fastapi import Depends, HTTPException, status, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from pydantic import ValidationError
-from app.db.database import get_session
+from db.database import get_session
 from sqlalchemy.orm import Session
 from datetime import datetime
-from app.db import crud, schemas
-from app.core.config import settings
+from db import crud, schemas
+from core.config import settings
 
 
 security = HTTPBearer()

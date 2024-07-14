@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from typing import AsyncGenerator
 from contextlib import asynccontextmanager
-from app.core.config import settings
+from core.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
 # 비동기 데이터베이스 URL 구성
@@ -52,5 +52,5 @@ metadata.reflect(bind=engine)
 
 
 def init_db():
-    import app.db.models  # 모델을 가져와야 테이블을 생성할 수 있습니다
+    import db.models  # 모델을 가져와야 테이블을 생성할 수 있습니다
     Base.metadata.create_all(bind=engine)

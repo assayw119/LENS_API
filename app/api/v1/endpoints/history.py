@@ -1,12 +1,12 @@
 from fastapi import Request, APIRouter, HTTPException, Depends
 from sqlalchemy import text
 import logging
-from app.db.database import get_async_session, metadata, AsyncSessionLocal
-from app.db.models import Message
+from db.database import get_async_session, metadata, AsyncSessionLocal
+from db.models import Message
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from app.db import schemas
+from db import schemas
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

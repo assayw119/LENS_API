@@ -5,7 +5,7 @@ from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, ToolMessage
-from app.core.config import Settings
+from core.config import Settings
 
 from fastapi import HTTPException
 
@@ -37,26 +37,65 @@ def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
 
 @tool
 def get_table_info() -> str:
-    """Extract all table information from database
-
+    """Extract all table information from MariaDB database
+    
     Args:
         None
-
+        
     Returns:
-        str: Information about the all tables.
+        str: Information about all tables in the database.
     """
-    db = SQLDatabase.from_uri("sqlite:///./sql_app.db")
-    db_info = db.get_table_info()
-    return db_info
+    settings = Settings()
+    database = settings.DATABASE
+    host = settings.DATABASE_HOST
+    user = settings.DATABASE_USER
+    password = settings.DATABASE_PASSWORD
+
+    try:
+        # MariaDB에 연결
+        connection = mysql.connector.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database
+        )
+
+        if connection.is_connected():
+            cursor = connection.cursor(dictionary=True)
+
+            # 테이블 목록 조회
+            cursor.execute("SHOW TABLES")
+            tables = cursor.fetchall()
+
+            table_info = []
+            for table in tables:
+                table_name = table[f'Tables_in_{database}']
+                cursor.execute(f"DESCRIBE {table_name}")
+                columns = cursor.fetchall()
+                table_info.append({
+                    'table_name': table_name,
+                    'columns': columns
+                })
+
+            return table_info
+    
+    except Error as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
+
 
 
 @tool
 def run_sql_query(query: str) -> str:
     """Run a SQL query against the database.
-
+    
     Args:
         query (str): The SQL query to execute.
-
+        
     Returns:
         str: The result of the query.
     """
@@ -77,29 +116,29 @@ def run_sql_query(query: str) -> str:
             password=password,
             database=database
         )
-        if connection.is_connected():
+        if connection.is_connected():            
             cursor = connection.cursor()
 
             # 데이터베이스 버전 확인
             cursor.execute("SELECT VERSION();")
             record = cursor.fetchone()
             print("MariaDB 버전:", record)
-
+            
             # 데이터 조회
             cursor.execute(query)
             rows = cursor.fetchall()
             print("test_table의 데이터:")
             for row in rows:
                 print(row)
-
+    
     except Error as e:
         raise HTTPException(status_code=404, detail=e)
-
+    
     finally:
         if connection.is_connected():
             cursor.close()
             connection.close()
-
+    
     return str(rows)
 
 
