@@ -168,6 +168,8 @@ class TextInput(BaseModel):
 
 class PromptRequest(BaseModel):
     prompt: str
+    session_id: Optional[int] = None
+    state: Optional[dict] = None
 
 
 class MessageBase(BaseModel):

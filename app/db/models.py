@@ -179,7 +179,7 @@ class Session(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     start_time = Column(DateTime, default=datetime.now)
-    end_time = Column(DateTime)
+    end_time = Column(DateTime, nullable=True)
     status = Column(String(20), default='active')
     code = Column(String(255), nullable=False)
 

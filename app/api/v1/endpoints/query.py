@@ -17,13 +17,11 @@ logger = logging.getLogger("uvicorn.error")
 @router.post("/execute_query")
 async def execute_query(input_text: schemas.TextInput, session: Session = Depends(get_session)):
     sql_query = input_text.text.strip()
-
     try:
         # SQL 쿼리 실행
         result = session.execute(text(sql_query))
         # 결과를 JSON 형식으로 변환
-        result_json = [dict(row) for row in result]
-        return result_json
+        return [dict(row) for row in result]
     except Exception as e:
         error_message = str(e)
         raise HTTPException(status_code=400, detail=error_message)
