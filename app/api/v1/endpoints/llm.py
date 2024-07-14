@@ -205,19 +205,21 @@ async def process_message(user_prompt: str, session_id: str) -> str:
                             tool_output = await selected_tool.invoke(tool_call["args"])
                         else:
                             tool_output = selected_tool.invoke(tool_call["args"])
+                        new_messages.append(ToolMessage(content=str(tool_output), tool_call_id=tool_call["id"]))
                     except Exception as e:
-                        # Handle exceptions raised during tool invocation
-                        tool_output = str(e)
+                        new_messages.append(ToolMessage(content=f"Error executing tool '{tool_call['name']}': {str(e)}", tool_call_id=tool_call["id"]))
                         # Log or handle the error appropriately
-
-                    new_messages.append(ToolMessage(content=str(tool_output), tool_call_id=tool_call["id"]))
                 else:
-                    # Handle case where tool is not found for the given tool_call
                     new_messages.append(ToolMessage(content=f"Tool '{tool_call['name']}' not found", tool_call_id=tool_call["id"]))
 
             messages = new_messages
-        else:
+
+        elif ai_msg.content:
             return ai_msg.content
+        else:
+            # Handle unexpected response from AI model
+            return "Unexpected response from AI model"
+
 
 @router.post("/execute_llm")
 async def execute_llm(request: schemas.PromptRequest):
