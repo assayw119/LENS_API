@@ -4,8 +4,8 @@ from langchain_openai import ChatOpenAI
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.tools import tool
-from langchain_core.messages import HumanMessage, ToolMessage
-from app.core.config import Settings
+from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
+from app.core.config import settings
 
 from fastapi import HTTPException
 
@@ -13,26 +13,26 @@ import inspect
 
 import mysql.connector
 from mysql.connector import Error
-
-store = {}
+from app.core.store import chat_history_store  # store 모듈을 가져옴
+from typing import List
 
 
 def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
-    if session_id not in store:
-        store[session_id] = InMemoryChatMessageHistory()
-        return store[session_id]
-
-    # session_id로 조회가 된다면 직전 3개의 message만 가져옴
-    memory = ConversationBufferWindowMemory(
-        chat_memory=store[session_id],
-        k=10,
-        return_messages=True,
-    )
-    assert len(memory.memory_variables) == 1
-    key = memory.memory_variables[0]
-    messages = memory.load_memory_variables({})[key]
-    store[session_id] = InMemoryChatMessageHistory(messages=messages)
-    return store[session_id]
+    session_history = chat_history_store.get(session_id)
+    if not session_history:
+        session_history = InMemoryChatMessageHistory()
+        chat_history_store.set(session_id, session_history)
+    else:
+        memory = ConversationBufferWindowMemory(
+            chat_memory=session_history,
+            k=10,
+            return_messages=True,
+        )
+        key = memory.memory_variables[0]
+        messages = memory.load_memory_variables({})[key]
+        session_history = InMemoryChatMessageHistory(messages=messages)
+        chat_history_store.set(session_id, session_history)
+    return session_history
 
 
 @tool
@@ -45,7 +45,7 @@ def get_table_info() -> str:
     Returns:
         str: Information about the all tables.
     """
-    db = SQLDatabase.from_uri("sqlite:///./sql_app.db")
+    db = SQLDatabase.from_uri(settings.DATABASE_URL)
     db_info = db.get_table_info()
     return db_info
 
@@ -60,19 +60,15 @@ def run_sql_query(query: str) -> str:
     Returns:
         str: The result of the query.
     """
-    # db = SQLDatabase.from_uri("sqlite:///./sql_app.db")
-    # result = db.run(query)
 
-    settings = Settings()
     database = settings.DATABASE
     host = settings.DATABASE_HOST
     user = settings.DATABASE_USER
     password = settings.DATABASE_PASSWORD
 
     try:
-        # MariaDB에 연결
         connection = mysql.connector.connect(
-            host=host,  # 또는 'localhost' for local connections
+            host=host,
             user=user,
             password=password,
             database=database
@@ -80,17 +76,8 @@ def run_sql_query(query: str) -> str:
         if connection.is_connected():
             cursor = connection.cursor()
 
-            # 데이터베이스 버전 확인
-            cursor.execute("SELECT VERSION();")
-            record = cursor.fetchone()
-            print("MariaDB 버전:", record)
-
-            # 데이터 조회
             cursor.execute(query)
             rows = cursor.fetchall()
-            print("test_table의 데이터:")
-            for row in rows:
-                print(row)
 
     except Error as e:
         raise HTTPException(status_code=404, detail=e)
@@ -104,14 +91,12 @@ def run_sql_query(query: str) -> str:
 
 
 def callLLM():
-    settings = Settings()
     API_KEY = settings.API_KEY
-    API_BASE = settings.API_BASE
+    # API_BASE = settings.API_BASE
 
     llm = ChatOpenAI(
         model="gpt-4o",
         openai_api_key=API_KEY,
-        openai_api_base=API_BASE,
     )
 
     tools = [get_table_info, run_sql_query]
@@ -121,8 +106,21 @@ def callLLM():
     return chain
 
 
-async def process_message(user_prompt: str, session_id: str) -> str:
-    messages = [HumanMessage(user_prompt)]
+async def process_message(user_prompt: str, session_id: str, sql_array: List) -> str:
+
+    constraints = """
+    --- start of constraints ---
+    - 현재 데이터베이스는 MariaDB를 사용합니다. 쿼리를 생성하면 반드시 MariaDB에서 실행할 수 있는 쿼리로 생성해야 합니다.
+    - run_sql_query 툴을 사용하여 쿼리를 실행한 결과를 받으면, 데이터 조회 여부를 통해 실행 가능한 쿼리인지 확인해야 합니다.
+    - run_sql_query 툴을 사용하여 쿼리를 실행할 때, 결과는 행을 반환하지 않고 쿼리에 대한 설명만 반환해야 합니다.
+    - 사용자에게 답변할 때 조회한 데이터를 절대로 반환해서는 안 됩니다.
+    - 그 외는 자유롭게 질문에 대해 답변을 제공하면 됩니다.
+    --- end of constraints ---
+
+    {user_prompt}
+    """
+
+    messages = [HumanMessage(constraints.format(user_prompt=user_prompt))]
     chain = callLLM()
 
     while True:
@@ -147,17 +145,23 @@ async def process_message(user_prompt: str, session_id: str) -> str:
                             tool_output = selected_tool.invoke(
                                 tool_call["args"])
                     except Exception as e:
-                        # Handle exceptions raised during tool invocation
                         tool_output = str(e)
-                        # Log or handle the error appropriately
 
+                    if tool_call["name"].lower() == "run_sql_query":
+                        sql_array.append(tool_call["args"])
                     new_messages.append(ToolMessage(content=str(
                         tool_output), tool_call_id=tool_call["id"]))
                 else:
-                    # Handle case where tool is not found for the given tool_call
                     new_messages.append(ToolMessage(
                         content=f"Tool '{tool_call['name']}' not found", tool_call_id=tool_call["id"]))
 
             messages = new_messages
         else:
+            ai_message = AIMessage(content=ai_msg.content)
+            session_history = chat_history_store.get(session_id)
+            if session_history:
+                session_history.add_message(ai_message)
+            else:
+                new_history = InMemoryChatMessageHistory(messages=[ai_message])
+                chat_history_store.set(session_id, new_history)
             return ai_msg.content

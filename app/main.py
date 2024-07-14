@@ -108,7 +108,6 @@ async def verify_token_middleware(request: Request, call_next):
 
                     result = await db.execute(select(User).filter(User.id == user_id))
                     user = result.scalars().first()
-                    print(f"User set in request.state: {user}")
                     if user is None:
                         return JSONResponse(status_code=401, content={"detail": "유저를 찾을 수 없습니다."})
 
