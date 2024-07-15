@@ -6,7 +6,7 @@ from app.db.database import get_session
 from app.db.models import Message, Session as SessionModel
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 import json
 from app.core.store import session_info_store, chat_history_store  # store 모듈을 가져옴
 from langchain_core.messages import HumanMessage
@@ -14,6 +14,8 @@ from langchain_core.chat_history import InMemoryChatMessageHistory
 from sqlalchemy.future import select
 
 router = APIRouter()
+
+sql_store = {}
 
 
 @router.post("/execute_llm")
@@ -61,6 +63,7 @@ async def execute_llm(request: Request, session: Session = Depends(get_session),
     # message_type: "chat" | "sql" | "schema";
     # sender_type: "user" | "lens" | "system";
 
+    sql_array = []
     session_obj = session.execute(
         select(SessionModel).filter(SessionModel.code == session_id)
     ).scalars().first()
@@ -76,7 +79,6 @@ async def execute_llm(request: Request, session: Session = Depends(get_session),
     session.add(new_message)
     session.commit()
 
-    sql_array = []
     response = await process_message(prompt, session_id, sql_array)
 
     new_gpt_message = Message(
@@ -105,7 +107,24 @@ async def execute_llm(request: Request, session: Session = Depends(get_session),
             session.add(new_sql_message)
             session.commit()
 
+        sql_store[session_id] = sql_array
+
     async def generate():
         yield response
 
     return StreamingResponse(generate(), media_type="text/plain")
+
+
+@router.get("/sql_history")
+async def sql_history(request: Request, session: Session = Depends(get_session), session_id: Optional[str] = None,):
+
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id를 입력해주세요.")
+
+    # 직전에 실행한 SQL을 가져옴
+    sql_array = sql_store.get(session_id, [])
+
+    # store에 저장된 sql을 가져온 후 store에서 삭제
+    sql_store[session_id] = []
+
+    return sql_array
