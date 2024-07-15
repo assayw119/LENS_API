@@ -5,7 +5,7 @@ from langchain_core.chat_history import InMemoryChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
-from app.core.config import settings
+from core.config import settings
 
 from fastapi import HTTPException
 
@@ -37,13 +37,13 @@ def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
 
 @tool
 def get_table_info() -> str:
-    """Extract all table information from database
-
+    """Extract all table information from MariaDB database
+    
     Args:
         None
-
+        
     Returns:
-        str: Information about the all tables.
+        str: Information about all tables in the database.
     """
     db = SQLDatabase.from_uri(settings.DATABASE_URL)
     db_info = db.get_table_info()
@@ -53,10 +53,10 @@ def get_table_info() -> str:
 @tool
 def run_sql_query(query: str) -> str:
     """Run a SQL query against the database.
-
+    
     Args:
         query (str): The SQL query to execute.
-
+        
     Returns:
         str: The result of the query.
     """
@@ -73,20 +73,18 @@ def run_sql_query(query: str) -> str:
             password=password,
             database=database
         )
-        if connection.is_connected():
+        if connection.is_connected():            
             cursor = connection.cursor()
-
             cursor.execute(query)
             rows = cursor.fetchall()
-
     except Error as e:
         raise HTTPException(status_code=404, detail=e)
-
+    
     finally:
         if connection.is_connected():
             cursor.close()
             connection.close()
-
+    
     return str(rows)
 
 

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from app.db import models, schemas
+from db import models, schemas
 
 def create_refresh_token(db: Session, user_id: int, token: str, expires_in: int):
     expires_at = datetime.utcnow() + timedelta(seconds=expires_in)

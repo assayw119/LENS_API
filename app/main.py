@@ -7,10 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse, Response
 from sqlalchemy.future import select
 
-from app.api.v1.routers import router as v1_router
-from app.core.config import settings
-from app.db.database import init_db, get_async_session
-from app.db.models import User, RefreshToken
+from api.v1.routers import router as v1_router
+from core.config import settings
+from db.database import init_db, get_async_session
+from db.models import User, RefreshToken
 
 
 @asynccontextmanager
@@ -47,7 +47,6 @@ app.add_middleware(
 )
 
 # 미들웨어 정의
-
 
 @app.middleware("http")
 async def verify_token_middleware(request: Request, call_next):

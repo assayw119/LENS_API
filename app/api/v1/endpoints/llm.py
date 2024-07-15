@@ -1,14 +1,14 @@
-from app.core.llm import process_message
+from core.llm import process_message
 from fastapi import Request, APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
 from fastapi.responses import StreamingResponse
-from app.db.database import get_session
-from app.db.models import Message, Session as SessionModel
+from db.database import get_session
+from db.models import Message, Session as SessionModel
 import uuid
 from datetime import datetime
 from typing import List, Optional
 import json
-from app.core.store import session_info_store, chat_history_store  # store 모듈을 가져옴
+from core.store import session_info_store, chat_history_store  # store 모듈을 가져옴
 from langchain_core.messages import HumanMessage
 from langchain_core.chat_history import InMemoryChatMessageHistory
 from sqlalchemy.future import select
