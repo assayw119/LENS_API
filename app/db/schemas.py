@@ -193,3 +193,11 @@ class Message(MessageBase):
 
     class Config:
         orm_mode = True
+
+
+class MessageWithSchema(MessageBase):
+    id: int
+    session_code: str
+
+    class Config:
+        orm_mode = True
