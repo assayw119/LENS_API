@@ -13,7 +13,7 @@ import inspect
 
 import mysql.connector
 from mysql.connector import Error
-from app.core.store import chat_history_store  # store 모듈을 가져옴
+from core.store import chat_history_store  # store 모듈을 가져옴
 from typing import List
 
 
