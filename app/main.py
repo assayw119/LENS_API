@@ -55,7 +55,8 @@ async def verify_token_middleware(request: Request, call_next):
         return await call_next(request)
 
     # Swagger UI와 ReDoc에 대한 요청은 토큰 검증을 건너 뛰기
-    if request.url.path in ["/docs",
+    if request.url.path in ["/",
+                            "/docs",
                             "/docs/oauth2-redirect",
                             "/redoc",
                             "/openapi.json",
@@ -121,7 +122,7 @@ async def verify_token_middleware(request: Request, call_next):
 
 @app.get("/")
 def root():
-    return {"message": "Hello Fastapi v31, last deploy is 2024-07-18"}
+    return {"message": "Hello Fastapi v32, last deploy is 2024-07-18"}
 
 # health check
 
