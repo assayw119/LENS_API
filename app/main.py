@@ -122,7 +122,7 @@ async def verify_token_middleware(request: Request, call_next):
 
 @app.get("/")
 def root():
-    return {"message": "Hello Fastapi v32, last deploy is 2024-07-18"}
+    return {"message": "Hello Fastapi v33, last deploy is 2024-07-29"}
 
 # health check
 
