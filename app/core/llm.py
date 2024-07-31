@@ -16,7 +16,6 @@ from mysql.connector import Error
 from core.store import chat_history_store  # store 모듈을 가져옴
 from typing import List
 
-
 def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
     session_history = chat_history_store.get(session_id)
     if not session_history:
@@ -25,11 +24,18 @@ def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
     else:
         memory = ConversationBufferWindowMemory(
             chat_memory=session_history,
-            k=10,
+            k=15,
             return_messages=True,
         )
         key = memory.memory_variables[0]
         messages = memory.load_memory_variables({})[key]
+
+        i = 0
+        while i < len(messages) and isinstance(messages[i], ToolMessage):
+            i += 1
+
+        messages = messages[i:]
+
         session_history = InMemoryChatMessageHistory(messages=messages)
         chat_history_store.set(session_id, session_history)
     return session_history
@@ -37,13 +43,13 @@ def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
 
 @tool
 def get_table_info() -> str:
-    """Extract all table information from MariaDB database
-    
+    """Extract all table information from database
+
     Args:
         None
-        
+
     Returns:
-        str: Information about all tables in the database.
+        str: Information about the all tables.
     """
     db = SQLDatabase.from_uri(settings.DATABASE_URL)
     db_info = db.get_table_info()
@@ -53,10 +59,10 @@ def get_table_info() -> str:
 @tool
 def run_sql_query(query: str) -> str:
     """Run a SQL query against the database.
-    
+
     Args:
         query (str): The SQL query to execute.
-        
+
     Returns:
         str: The result of the query.
     """
@@ -73,18 +79,20 @@ def run_sql_query(query: str) -> str:
             password=password,
             database=database
         )
-        if connection.is_connected():            
+        if connection.is_connected():
             cursor = connection.cursor()
+
             cursor.execute(query)
             rows = cursor.fetchall()
+
     except Error as e:
-        raise HTTPException(status_code=404, detail=e)
-    
+        return str('Error while connecting to MySQL: ' + str(e))
+
     finally:
         if connection.is_connected():
             cursor.close()
             connection.close()
-    
+
     return str(rows)
 
 
@@ -135,7 +143,6 @@ async def process_message(user_prompt: str, session_id: str, sql_array: List) ->
                     "get_table_info": get_table_info,
                     "run_sql_query": run_sql_query
                 }.get(tool_call["name"].lower())
-
                 if selected_tool:
                     try:
                         if inspect.iscoroutinefunction(selected_tool.invoke):
@@ -145,7 +152,6 @@ async def process_message(user_prompt: str, session_id: str, sql_array: List) ->
                                 tool_call["args"])
                     except Exception as e:
                         tool_output = str(e)
-
                     if tool_call["name"].lower() == "run_sql_query":
                         sql_array.append(tool_call["args"])
                     new_messages.append(ToolMessage(content=str(
@@ -158,6 +164,7 @@ async def process_message(user_prompt: str, session_id: str, sql_array: List) ->
         else:
             ai_message = AIMessage(content=ai_msg.content)
             session_history = chat_history_store.get(session_id)
+
             if session_history:
                 session_history.add_message(ai_message)
             else:
