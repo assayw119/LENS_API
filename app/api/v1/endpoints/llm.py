@@ -1,130 +1,174 @@
-from core.llm import process_message
-from fastapi import Request, APIRouter, Depends, HTTPException, Body
-from sqlalchemy.orm import Session
-from fastapi.responses import StreamingResponse
-from db.database import get_session
-from db.models import Message, Session as SessionModel
-import uuid
-from datetime import datetime
-from typing import List, Optional
-import json
-from core.store import session_info_store, chat_history_store  # store 모듈을 가져옴
-from langchain_core.messages import HumanMessage
+from langchain_community.utilities.sql_database import SQLDatabase
+from langchain.memory import ConversationBufferMemory, ConversationBufferWindowMemory
+from langchain_openai import ChatOpenAI
 from langchain_core.chat_history import InMemoryChatMessageHistory
-from sqlalchemy.future import select
+from langchain_core.runnables.history import RunnableWithMessageHistory
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
+from core.config import settings
 
+from fastapi import HTTPException, APIRouter
+
+import inspect
+
+import mysql.connector
+from mysql.connector import Error
+from core.store import chat_history_store  # store 모듈을 가져옴
+from typing import List
 router = APIRouter()
 
-sql_store = {}
-
-
-@router.post("/execute_llm")
-async def execute_llm(request: Request, session: Session = Depends(get_session), session_id: Optional[str] = None,):
-    if not hasattr(request.state, 'user'):
-        raise HTTPException(status_code=401, detail="사용자 정보를 찾을 수 없습니다.")
-
-    body = await request.body()
-    data = json.loads(body)
-    prompt = data.get("prompt")
-    session_id = data.get("session_id")
-
-    user = request.state.user
-    if not session_id:
-        use_session = SessionModel(
-            user_id=user.id,
-            end_time=datetime.now(),
-            status="active",
-            code=str(uuid.uuid4()),
+def get_session_history(session_id: str) -> InMemoryChatMessageHistory:
+    session_history = chat_history_store.get(session_id)
+    if not session_history:
+        session_history = InMemoryChatMessageHistory()
+        chat_history_store.set(session_id, session_history)
+    else:
+        memory = ConversationBufferWindowMemory(
+            chat_memory=session_history,
+            k=15,
+            return_messages=True,
         )
-        session.add(use_session)
-        session.commit()
+        key = memory.memory_variables[0]
+        messages = memory.load_memory_variables({})[key]
 
-        new_message = Message(
-            session_id=use_session.id,
-            user_id=user.id,
-            message_text=prompt,
-            timestamp=datetime.now(),
-            sender_type="user",
-            message_type="chat",
+        i = 0
+        while i < len(messages) and isinstance(messages[i], ToolMessage):
+            i += 1
+
+        messages = messages[i:]
+
+        session_history = InMemoryChatMessageHistory(messages=messages)
+        chat_history_store.set(session_id, session_history)
+    return session_history
+
+
+@tool
+def get_table_info() -> str:
+    """Extract all table information from database
+
+    Args:
+        None
+
+    Returns:
+        str: Information about the all tables.
+    """
+    db = SQLDatabase.from_uri(settings.DATABASE_URL)
+    db_info = db.get_table_info()
+    return db_info
+
+
+@tool
+def run_sql_query(query: str) -> str:
+    """Run a SQL query against the database.
+
+    Args:
+        query (str): The SQL query to execute.
+
+    Returns:
+        str: The result of the query.
+    """
+
+    database = settings.DATABASE
+    host = settings.DATABASE_HOST
+    user = settings.DATABASE_USER
+    password = settings.DATABASE_PASSWORD
+
+    try:
+        connection = mysql.connector.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=database
         )
-        session.add(new_message)
-        session.commit()
+        if connection.is_connected():
+            cursor = connection.cursor()
 
-        session_info_store.set(use_session.code, {
-            "user_id": user.id,
-            "session_id": use_session.id,
-        })
+            cursor.execute(query)
+            rows = cursor.fetchall()
 
-        chat_history_store.set(use_session.id, InMemoryChatMessageHistory(
-            messages=[HumanMessage(prompt)]))
+    except Error as e:
+        return str('Error while connecting to MySQL: ' + str(e))
 
-        return {"redirect_path": f"/chat/{use_session.code}"}
+    finally:
+        if connection.is_connected():
+            cursor.close()
+            connection.close()
 
-    # message_type: "chat" | "sql" | "schema";
-    # sender_type: "user" | "lens" | "system";
+    return str(rows)
 
-    sql_array = []
-    session_obj = session.execute(
-        select(SessionModel).filter(SessionModel.code == session_id)
-    ).scalars().first()
 
-    new_message = Message(
-        session_id=session_obj.id,
-        user_id=user.id,
-        message_text=prompt,
-        timestamp=datetime.now(),
-        sender_type="user",
-        message_type="chat",
-    )
-    session.add(new_message)
-    session.commit()
+def callLLM():
+    API_KEY = settings.API_KEY
+    # API_BASE = settings.API_BASE
 
-    response = await process_message(prompt, session_id, sql_array)
-
-    new_gpt_message = Message(
-        session_id=session_obj.id,
-        user_id=user.id,
-        message_text=response,
-        timestamp=datetime.now(),
-        sender_type="lens",
-        message_type="chat",
+    llm = ChatOpenAI(
+        model="gpt-4o",
+        openai_api_key=API_KEY,
     )
 
-    session.add(new_gpt_message)
-    session.commit()
+    tools = [get_table_info, run_sql_query]
+    llm_with_tools = llm.bind_tools(tools)
+    chain = RunnableWithMessageHistory(llm_with_tools, get_session_history)
 
-    # sql_array가 있을 경우에만 db에 저장
-    if sql_array:
-        for sql in sql_array:
-            new_sql_message = Message(
-                session_id=session_obj.id,
-                user_id=user.id,
-                message_text=sql.get("query"),
-                timestamp=datetime.now(),
-                sender_type="lens",
-                message_type="sql",
-            )
-            session.add(new_sql_message)
-            session.commit()
-
-        sql_store[session_id] = sql_array
-
-    async def generate():
-        yield response
-
-    return StreamingResponse(generate(), media_type="text/plain")
+    return chain
 
 
-@router.get("/sql_history")
-async def sql_history(request: Request, session: Session = Depends(get_session), session_id: Optional[str] = None,):
+async def process_message(user_prompt: str, session_id: str, sql_array: List) -> str:
 
-    if not session_id:
-        raise HTTPException(status_code=400, detail="session_id를 입력해주세요.")
+    constraints = """
+    --- start of constraints ---
+    - 현재 데이터베이스는 MariaDB를 사용합니다. 쿼리를 생성하면 반드시 MariaDB에서 실행할 수 있는 쿼리로 생성해야 합니다.
+    - run_sql_query 툴을 사용하여 쿼리를 실행한 결과를 받으면, 데이터 조회 여부를 통해 실행 가능한 쿼리인지 확인해야 합니다.
+    - 답변에는 데이터 행을 반환하지 않고 쿼리에 대한 설명만 포함합니다.
+    - 쿼리에 대한 설명에는 쿼리 생성 전략, 실행 효율에 대한 평가 등을 포함해서 최소 3줄 이상으로 작성하고 절대 쿼리를 포함하지 않습니다.
+    - 사용자에게 답변할 때 조회한 데이터를 절대 반환하지 않습니다.
+    - 그 외는 자유롭게 질문에 대해 답변을 제공합니다.
+    --- end of constraints ---
 
-    # 직전에 실행한 SQL을 가져옴
-    sql_array = sql_store.get(session_id, [])
+    {user_prompt}
+    """
 
-    # store에 저장된 sql을 가져온 후 store에서 삭제
-    sql_store[session_id] = []
+    messages = [HumanMessage(constraints.format(user_prompt=user_prompt))]
+    chain = callLLM()
 
-    return sql_array
+    while True:
+        ai_msg = chain.invoke(
+            messages,
+            config={"configurable": {"session_id": session_id}},
+        )
+
+        if ai_msg.tool_calls:
+            new_messages = []
+            for tool_call in ai_msg.tool_calls:
+                selected_tool = {
+                    "get_table_info": get_table_info,
+                    "run_sql_query": run_sql_query
+                }.get(tool_call["name"].lower())
+                if selected_tool:
+                    try:
+                        if inspect.iscoroutinefunction(selected_tool.invoke):
+                            tool_output = await selected_tool.invoke(tool_call["args"])
+                        else:
+                            tool_output = selected_tool.invoke(
+                                tool_call["args"])
+                    except Exception as e:
+                        tool_output = str(e)
+                    if tool_call["name"].lower() == "run_sql_query":
+                        sql_array.append(tool_call["args"])
+                    new_messages.append(ToolMessage(content=str(
+                        tool_output), tool_call_id=tool_call["id"]))
+                else:
+                    new_messages.append(ToolMessage(
+                        content=f"Tool '{tool_call['name']}' not found", tool_call_id=tool_call["id"]))
+
+            messages = new_messages
+        else:
+            ai_message = AIMessage(content=ai_msg.content)
+            session_history = chat_history_store.get(session_id)
+
+            if session_history:
+                session_history.add_message(ai_message)
+            else:
+                new_history = InMemoryChatMessageHistory(messages=[ai_message])
+                chat_history_store.set(session_id, new_history)
+            return ai_msg.content
