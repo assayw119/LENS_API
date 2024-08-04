@@ -116,6 +116,7 @@ async def process_message(user_prompt: str, session_id: str, sql_array: List) ->
 
     constraints = """
     --- start of constraints ---
+    - 당신의 이름은 LENS입니다.
     - 현재 데이터베이스는 MariaDB를 사용합니다. 쿼리를 생성하면 반드시 MariaDB에서 실행할 수 있는 쿼리로 생성해야 합니다.
     - run_sql_query 툴을 사용하여 쿼리를 실행한 결과를 받으면, 데이터 조회 여부를 통해 실행 가능한 쿼리인지 확인해야 합니다.
     - 답변에는 데이터 행을 반환하지 않고 쿼리에 대한 설명만 포함합니다.

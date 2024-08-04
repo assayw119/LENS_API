@@ -50,6 +50,37 @@ async def execute_llm(request: Request, session: Session = Depends(get_session),
         session.add(new_message)
         session.commit()
 
+        sql_array = []
+        response = await process_message(prompt, session_id, sql_array)
+
+        new_gpt_message = Message(
+            session_id=use_session.id,
+            user_id=user.id,
+            message_text=response,
+            timestamp=datetime.now(),
+            sender_type="lens",
+            message_type="chat",
+        )
+
+        session.add(new_gpt_message)
+        session.commit()
+
+        # sql_array가 있을 경우에만 db에 저장
+        if sql_array:
+            for sql in sql_array:
+                new_sql_message = Message(
+                    session_id=session_obj.id,
+                    user_id=user.id,
+                    message_text=sql.get("query"),
+                    timestamp=datetime.now(),
+                    sender_type="lens",
+                    message_type="sql",
+                )
+                session.add(new_sql_message)
+                session.commit()
+
+            sql_store[session_id] = sql_array
+
         session_info_store.set(use_session.code, {
             "user_id": user.id,
             "session_id": use_session.id,
