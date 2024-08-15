@@ -15,7 +15,6 @@ uvicorn main:app --reload
 
 ## Page
 [![Video Label](http://img.youtube.com/vi/SNQRRekBulU/0.jpg)](https://youtu.be/SNQRRekBulU)
-https://www.youtube.com/watch?v=SNQRRekBulU
 
 ![image](https://github.com/user-attachments/assets/de86b52e-e8dc-45ff-b418-96c9578a407f)
 ![image](https://github.com/user-attachments/assets/5d59c0ff-bcf0-473c-8932-0334fb97600e)
