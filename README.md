@@ -17,7 +17,8 @@ uvicorn main:app --reload
 ![스크린샷 2024-08-22 오후 3 38 33](https://github.com/user-attachments/assets/690a9699-b6ea-40e1-8cf3-656110ac63bb)
 
 ## Page
-[Youtube]
+Youtube : https://youtu.be/SNQRRekBulU
+
 [![Video Label](http://img.youtube.com/vi/SNQRRekBulU/0.jpg)](https://youtu.be/SNQRRekBulU)
 
 ![image](https://github.com/user-attachments/assets/de86b52e-e8dc-45ff-b418-96c9578a407f)
