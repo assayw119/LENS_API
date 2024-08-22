@@ -13,6 +13,10 @@ uvicorn main:app --reload
 ```
 3. Open local API docs [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
+## Arch.
+![Uploading 스크린샷 2024-08-22 오후 3.38.33.png…]()
+
+
 ## Page
 [![Video Label](http://img.youtube.com/vi/SNQRRekBulU/0.jpg)](https://youtu.be/SNQRRekBulU)
 
